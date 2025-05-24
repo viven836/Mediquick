@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediQuick - User Details</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Lora:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <a href="index.html" class="logo-link">
+        Mediquick
+        </a>k
+    </div>
+
+    <div class="container">
+        <div class="result-box">
+            <h2 class="page-title">Please enter your:</h2>
+            <input type="text" class="input-field" id="userName" placeholder="Name">
+            <input type="tel" class="input-field" id="userPhone" placeholder="Phone No">
+            <div class="center-content">
+                <button class="btn" onclick="bookBed()">Enter</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function bookBed() {
+            const userName = document.getElementById('userName').value.trim();
+            const userPhone = document.getElementById('userPhone').value.trim();
+            
+            if (!userName || !userPhone) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            // Store user details
+            localStorage.setItem('userName', userName);
+            localStorage.setItem('userPhone', userPhone);
+            
+            window.location.href = 'bed-booked.html';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediQuick - Assessment Questionnaire</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Lora:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <a href="index.html" class="logo-link">
+        Mediquick
+        </a>
+    </div>
+
+    <div class="container">
+        <div class="content-box">
+            <h2 class="page-title">Answer these Questions:</h2>
+            
+            <div class="question-section">
+                <h3 class="question-title">1. What's your main issue?</h3>
+                <div class="radio-group" id="mainIssue">
+                    <label class="radio-item">
+                        <input type="radio" name="mainIssue" value="chest-pain"> Chest pain
+                    </label>
+                    <label class="radio-item">
+                        <input type="radio" name="mainIssue" value="difficulty-breathing"> Difficulty breathing
+                    </label>
+                    <label class="radio-item">
+                        <input type="radio" name="mainIssue" value="unconsciousness"> Unconsciousness or seizure
+                    </label>
+                    <label class="radio-item">
+                        <input type="radio" name="mainIssue" value="heavy-bleeding"> Heavy bleeding
+                    </label>
+                    <label class="radio-item">
+                        <input type="radio" name="mainIssue" value="allergic-reaction"> Severe allergic reaction
+                    </label>
+                    <label class="radio-item">
+                        <input type="radio" name="mainIssue" value="burns"> Burns or electric shock
+                    </label>
+                    <label class="radio-item">
+                        <input type="radio" name="mainIssue" value="poisoning"> Poisoning or overdose
+                    </label>
+                    <label class="radio-item">
+                        <input type="radio" name="mainIssue" value="abdominal-pain"> Severe abdominal pain
+                    </label>
+                    <label class="radio-item">
+                        <input type="radio" name="mainIssue" value="weakness"> Sudden weakness/numbness
+                    </label>
+                    <label class="radio-item">
+                        <input type="radio" name="mainIssue" value="fracture"> Bone fracture or trauma
+                    </label>
+                    <label class="radio-item">
+                        <input type="radio" name="mainIssue" value="fever"> High fever with rash or confusion
+                    </label>
+                    <label class="radio-item">
+                        <input type="radio" name="mainIssue" value="other"> Something else
+                    </label>
+                </div>
+            </div>
+
+            <div class="question-section">
+                <h3 class="question-title">2. How severe is it?</h3>
+                <input type="range" class="severity-slider" id="severityLevel" min="1" max="10" value="5">
+            </div>
+
+            <div class="question-section">
+                <h3 class="question-title">3. What are your symptoms?</h3>
+                <div class="checkbox-group" id="symptoms">
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="chest-tightness"> Chest tightness or pressure
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="breathing-trouble"> Trouble breathing or wheezing
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="dizziness"> Dizziness or fainting
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="consciousness-loss"> Loss of consciousness
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="severe-bleeding"> Severe bleeding that won't stop
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="swollen-lips"> Swollen lips or face
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="burns"> Burns with blistering skin
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="vomiting-blood"> Vomiting blood or black stool
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="confusion"> Confusion or slurred speech
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="paralysis"> Paralysis or inability to move
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="severe-pain"> Severe pain (anywhere)
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="seizures"> Seizures or jerky movements
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="none"> No, none of these
+                    </label>
+                </div>
+            </div>
+
+            <div class="center-content">
+                <button class="btn" onclick="processQuestionnaire()">Enter</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function processQuestionnaire() {
+            const mainIssue = document.querySelector('input[name="mainIssue"]:checked');
+            const severityLevel = document.getElementById('severityLevel').value;
+            const symptoms = document.querySelectorAll('#symptoms input[type="checkbox"]:checked');
+            
+            if (!mainIssue) {
+                alert('Please select your main issue');
+                return;
+            }
+            
+            // Store questionnaire data
+            localStorage.setItem('mainIssue', mainIssue.value);
+            localStorage.setItem('severityLevel', severityLevel);
+            localStorage.setItem('selectedSymptoms', JSON.stringify(Array.from(symptoms).map(s => s.value)));
+            localStorage.setItem('assessmentType', 'questionnaire');
+            
+            // Emergency detection logic
+            const emergencyIssues = ['chest-pain', 'difficulty-breathing', 'unconsciousness', 'heavy-bleeding', 'allergic-reaction', 'burns', 'poisoning'];
+            const emergencySymptoms = ['chest-tightness', 'breathing-trouble', 'consciousness-loss', 'severe-bleeding', 'swollen-lips', 'burns', 'vomiting-blood', 'confusion', 'paralysis', 'seizures'];
+            
+            const isEmergencyIssue = emergencyIssues.includes(mainIssue.value);
+            const hasEmergencySymptoms = Array.from(symptoms).some(symptom => 
+                emergencySymptoms.includes(symptom.value)
+            );
+            const highSeverity = parseInt(severityLevel) >= 7;
+            
+            if (isEmergencyIssue || hasEmergencySymptoms || highSeverity) {
+                window.location.href = 'emergency.html';
+            } else {
+                window.location.href = 'non-emergency.html';
+            }
+        }
+    </script>
+</body>
+</html>

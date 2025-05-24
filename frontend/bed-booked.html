@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediQuick - Bed Booked</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Lora:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <a href="index.html" class="logo-link">
+        Mediquick
+        </a>
+    </div>
+
+    <div class="container">
+        <div class="hospital-info">
+            Your Bed is booked in:<br>
+            <span id="hospitalAddress">//hospital address</span>
+        </div>
+        <div class="result-box">
+            <p class="result-text">Would you like us to book an ambulance for you?</p>
+            <div class="button-group" id="ambulanceButtons">
+                <button class="btn" onclick="bookAmbulance()">Yes</button>
+                <button class="btn" onclick="noAmbulance()">No</button>
+            </div>
+            <div id="ambulanceResponse" class="result-text hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        // Simulate hospital assignment when page loads
+        window.onload = function() {
+            const hospitals = [
+                'City General Hospital, 123 Main St, Downtown',
+                'St. Mary\'s Medical Center, 456 Oak Ave, Midtown',
+                'Emergency Care Hospital, 789 Pine Rd, Uptown'
+            ];
+            
+            const assignedHospital = hospitals[Math.floor(Math.random() * hospitals.length)];
+            document.getElementById('hospitalAddress').textContent = assignedHospital;
+        }
+
+        function bookAmbulance() {
+            const responseDiv = document.getElementById('ambulanceResponse');
+            responseDiv.textContent = 'An ambulance is being sent to your location. Please stay calm and wait for assistance.';
+            responseDiv.classList.remove('hidden');
+            
+            // Hide the buttons
+            document.getElementById('ambulanceButtons').style.display = 'none';
+        }
+
+        function noAmbulance() {
+            const responseDiv = document.getElementById('ambulanceResponse');
+            responseDiv.textContent = 'No ambulance requested. Please make your way to the hospital safely.';
+            responseDiv.classList.remove('hidden');
+            
+            // Hide the buttons
+            document.getElementById('ambulanceButtons').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

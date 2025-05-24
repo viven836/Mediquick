@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediQuick - Patient Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Lora:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <a href="index.html" class="logo-link">
+        Mediquick
+        </a>
+    </div>
+
+    <div class="container">
+        <div class="content-box">
+            <h2 class="page-title">Describe your symptoms:</h2>
+            <textarea class="textarea-large" id="symptomsText" placeholder="Enter text"></textarea>
+            <div class="center-content">
+                <button class="btn" onclick="processSymptoms()">Enter</button>
+                <p class="or-text">or</p>
+                <button class="btn" onclick="window.location.href='questionnaire.html'">Answer Questions</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function processSymptoms() {
+            const symptomsText = document.getElementById('symptomsText').value.trim();
+            
+            if (!symptomsText) {
+                alert('Please enter your symptoms');
+                return;
+            }
+            
+            // Store symptoms in localStorage for processing
+            localStorage.setItem('symptoms', symptomsText);
+            localStorage.setItem('assessmentType', 'text');
+            
+            // Simple AI simulation - check for emergency keywords
+            const emergencyKeywords = ['chest pain', 'can\'t breathe', 'bleeding', 'unconscious', 'seizure', 'heart attack', 'stroke', 'severe pain'];
+            const isEmergency = emergencyKeywords.some(keyword => 
+                symptomsText.toLowerCase().includes(keyword)
+            );
+            
+            if (isEmergency) {
+                window.location.href = 'emergency.html';
+            } else {
+                window.location.href = 'non-emergency.html';
+            }
+        }
+    </script>
+</body>
+</html>
