@@ -1,0 +1,41 @@
+# Ignore Python bytecode
+__pycache__/
+*.py[cod]
+
+# Ignore virtual environments
+venv/
+.env/
+ENV/
+env.bak/
+
+# Ignore model artifacts if you don’t want to push them
+#*.pkl
+
+# Ignore OS/system files
+.DS_Store
+Thumbs.db
+
+# Ignore logs and cache
+*.log
+.cache/
+.ipynb_checkpoints/
+
+# Ignore compiled files
+*.so
+
+# Ignore Excel datasets (optional)
+#*.xlsx
+
+# Ignore backend config/secrets (if any)
+*.env
+
+# Node stuff (if ever used)
+node_modules/
+
+# Frontend editor junk
+.vscode/
+.idea/
+
+# Ignore temporary file edits
+*.swp
+*.swo

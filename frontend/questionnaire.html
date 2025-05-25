@@ -116,7 +116,7 @@
         </div>
     </div>
 
-    <script>
+    <!--<script>
         function processQuestionnaire() {
             const mainIssue = document.querySelector('input[name="mainIssue"]:checked');
             const severityLevel = document.getElementById('severityLevel').value;
@@ -149,6 +149,46 @@
                 window.location.href = 'non-emergency.html';
             }
         }
-    </script>
+    </script>-->
+    <script>
+    async function processQuestionnaire() {
+        const mainIssue = document.querySelector('input[name="mainIssue"]:checked');
+        const severityLevel = document.getElementById('severityLevel').value;
+        const symptoms = document.querySelectorAll('#symptoms input[type="checkbox"]:checked');
+        
+        if (!mainIssue) {
+            alert('Please select your main issue');
+            return;
+        }
+
+        // Convert selections to descriptive sentence
+        const selectedSymptoms = Array.from(symptoms).map(s => s.value.replace(/-/g, ' '));
+        const textDescription = `Main issue is ${mainIssue.value.replace(/-/g, ' ')}. Severity level is ${severityLevel}. Symptoms include: ${selectedSymptoms.join(', ')}`;
+
+        // 🔁 Send to Flask model for prediction
+        try {
+            const response = await fetch("http://127.0.0.1:5000/predict", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ symptoms: textDescription })
+            });
+
+            const result = await response.json();
+
+            if (result.emergency) {
+                window.location.href = "emergency.html";
+            } else {
+                window.location.href = "non-emergency.html";
+            }
+        } catch (error) {
+            console.error("Error contacting the backend:", error);
+            alert("Oops! Couldn’t reach the prediction server. Is your Flask backend running?");
+        }
+    }
+</script>
+
+
 </body>
 </html>

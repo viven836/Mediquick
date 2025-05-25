@@ -26,7 +26,7 @@
         </div>
     </div>
 
-    <script>
+    <!--<script>
         function processSymptoms() {
             const symptomsText = document.getElementById('symptomsText').value.trim();
             
@@ -51,6 +51,39 @@
                 window.location.href = 'non-emergency.html';
             }
         }
-    </script>
+    </script>-->
+    <script>
+    async function processSymptoms() {
+        const symptomsText = document.getElementById("symptomsText").value.trim();
+
+        if (!symptomsText) {
+            alert("Please enter your symptoms.");
+            return;
+        }
+
+        // 🔁 Send the symptoms to the Flask backend
+        try {
+            const response = await fetch("http://127.0.0.1:5000/predict", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ symptoms: symptomsText })
+            });
+
+            const result = await response.json();
+
+            if (result.emergency) {
+                window.location.href = "emergency.html";
+            } else {
+                window.location.href = "non-emergency.html";
+            }
+        } catch (error) {
+            console.error("Prediction failed:", error);
+            alert("Couldn’t reach the backend. Is Flask running?");
+        }
+    }
+</script>
+
 </body>
 </html>
