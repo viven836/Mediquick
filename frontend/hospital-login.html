@@ -9,7 +9,7 @@
 </head>
 <body>
     <div class="header">
-       <a href="index.html" class="logo-link">
+        <a href="index.html" class="logo-link">
         Mediquick
         </a>
     </div>
@@ -20,10 +20,44 @@
             <input type="text" class="input-field" placeholder="Hospital ID">
             <input type="password" class="input-field" placeholder="Password">
             <div class="center-content">
-                <button class="btn">Login</button>
-                <button class="btn" onclick="window.location.href='index.html'" style="margin-top: 10px; background-color: #666;">Back to Home</button>
+                <button class="btn" onclick="handleLogin()">Login</button>
+                <!--<button class="btn" onclick="window.location.href='index.html'" style="margin-top: 10px; background-color: #666;">Back to Home</button>-->
             </div>
         </div>
     </div>
+
+    <script>
+        async function handleLogin() {
+            const hospitalId = document.querySelector('input[placeholder="Hospital ID"]').value.trim();
+            const password = document.querySelector('input[placeholder="Password"]').value.trim();
+
+            if (!hospitalId || !password) {
+                alert('Please enter both Hospital ID and Password');
+                return;
+            }
+
+            try {
+                const response = await fetch("http://127.0.0.1:5000/hospital-login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ hospitalId, password })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    localStorage.setItem('hospitalId', hospitalId);
+                    window.location.href = `hospital-dashboard.html?hospitalId=${hospitalId}`;
+                } else {
+                    alert(result.error || "Login failed.");
+                }
+
+            } catch (err) {
+                alert("Server error. Please try again later.");
+                console.error("Login error:", err);
+            }
+        }
+    </script>
+
 </body>
 </html>

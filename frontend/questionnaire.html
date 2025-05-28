@@ -115,41 +115,6 @@
             </div>
         </div>
     </div>
-
-    <!--<script>
-        function processQuestionnaire() {
-            const mainIssue = document.querySelector('input[name="mainIssue"]:checked');
-            const severityLevel = document.getElementById('severityLevel').value;
-            const symptoms = document.querySelectorAll('#symptoms input[type="checkbox"]:checked');
-            
-            if (!mainIssue) {
-                alert('Please select your main issue');
-                return;
-            }
-            
-            // Store questionnaire data
-            localStorage.setItem('mainIssue', mainIssue.value);
-            localStorage.setItem('severityLevel', severityLevel);
-            localStorage.setItem('selectedSymptoms', JSON.stringify(Array.from(symptoms).map(s => s.value)));
-            localStorage.setItem('assessmentType', 'questionnaire');
-            
-            // Emergency detection logic
-            const emergencyIssues = ['chest-pain', 'difficulty-breathing', 'unconsciousness', 'heavy-bleeding', 'allergic-reaction', 'burns', 'poisoning'];
-            const emergencySymptoms = ['chest-tightness', 'breathing-trouble', 'consciousness-loss', 'severe-bleeding', 'swollen-lips', 'burns', 'vomiting-blood', 'confusion', 'paralysis', 'seizures'];
-            
-            const isEmergencyIssue = emergencyIssues.includes(mainIssue.value);
-            const hasEmergencySymptoms = Array.from(symptoms).some(symptom => 
-                emergencySymptoms.includes(symptom.value)
-            );
-            const highSeverity = parseInt(severityLevel) >= 7;
-            
-            if (isEmergencyIssue || hasEmergencySymptoms || highSeverity) {
-                window.location.href = 'emergency.html';
-            } else {
-                window.location.href = 'non-emergency.html';
-            }
-        }
-    </script>-->
     <script>
     async function processQuestionnaire() {
         const mainIssue = document.querySelector('input[name="mainIssue"]:checked');

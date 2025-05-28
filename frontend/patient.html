@@ -26,32 +26,6 @@
         </div>
     </div>
 
-    <!--<script>
-        function processSymptoms() {
-            const symptomsText = document.getElementById('symptomsText').value.trim();
-            
-            if (!symptomsText) {
-                alert('Please enter your symptoms');
-                return;
-            }
-            
-            // Store symptoms in localStorage for processing
-            localStorage.setItem('symptoms', symptomsText);
-            localStorage.setItem('assessmentType', 'text');
-            
-            // Simple AI simulation - check for emergency keywords
-            const emergencyKeywords = ['chest pain', 'can\'t breathe', 'bleeding', 'unconscious', 'seizure', 'heart attack', 'stroke', 'severe pain'];
-            const isEmergency = emergencyKeywords.some(keyword => 
-                symptomsText.toLowerCase().includes(keyword)
-            );
-            
-            if (isEmergency) {
-                window.location.href = 'emergency.html';
-            } else {
-                window.location.href = 'non-emergency.html';
-            }
-        }
-    </script>-->
     <script>
     async function processSymptoms() {
         const symptomsText = document.getElementById("symptomsText").value.trim();

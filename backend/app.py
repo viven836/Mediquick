@@ -1,48 +1,9 @@
-'''
 
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import joblib
 import os
-
-app = Flask(__name__, static_folder='../frontend', static_url_path='')  # Pointing to your frontend folder
-CORS(app)
-
-# Load your ML model and vectorizer
-model = joblib.load("emergency_model.pkl")
-vectorizer = joblib.load("vectorizer.pkl")
-
-# 🏠 Homepage Route
-@app.route('/')
-def home():
-    return send_from_directory(app.static_folder, 'index.html')
-
-# 🧠 ML Prediction Route
-@app.route('/predict', methods=['POST'])
-def predict():
-    data = request.get_json()
-    symptoms = data.get("symptoms", "")
-    
-    if not symptoms.strip():
-        return jsonify({"error": "No symptoms provided"}), 400
-
-    vector = vectorizer.transform([symptoms])
-    prediction = model.predict(vector)[0]
-
-    return jsonify({
-        "emergency": bool(prediction),
-        "message": "🚨 Emergency detected!" if prediction else "✅ Not an emergency."
-    })
-
-if __name__ == '__main__':
-    app.run(debug=True)
-    '''
-
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
-import joblib
-import os
-from db import conn, cursor
+from db import get_db_connection
 import math
 from datetime import datetime
 
@@ -87,7 +48,7 @@ def predict():
 
 @app.route("/some-route")
 def something():
-
+    conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     cursor.execute("SELECT * FROM hospitals")
@@ -135,7 +96,7 @@ def book_bed():
         specialist = category_to_specialist.get(category, "General Physician")  # fallback if undefined
   # This comes from the ML model
 
-        
+        conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
         # Step 1: Find all hospitals with available beds and matching doctor
@@ -215,6 +176,162 @@ def book_bed():
     except Exception as e:
         print("🔥 Booking Error:", str(e))
         return jsonify({"error": str(e)}), 500
+    
+@app.route("/hospital-login", methods=["POST"])
+def hospital_login():
+    try:
+        data = request.get_json()
+        hospital_id = data.get("hospitalId")
+        password = data.get("password")
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT id FROM hospitals
+            WHERE id = %s AND password = %s
+        """, (hospital_id, password))
+
+        result = cursor.fetchone()
+        conn.close()
+
+        if result:
+            return jsonify({"success": True, "hospitalId": hospital_id})
+        else:
+            return jsonify({"success": False, "error": "Invalid credentials"}), 401
+
+    except Exception as e:
+        print("🔥 LOGIN ERROR:", str(e))
+        return jsonify({"success": False, "error": "Server error"}), 500
+
+
+@app.route("/hospital-patients/<int:hospital_id>", methods=["GET"])
+def get_hospital_patients(hospital_id):
+    try:
+        category_to_specialist = {
+            "Cardiac": "Cardiologist",
+            "Orthopedic": "Orthopedic",
+            "Allergic": "Allergist",
+            "Neurological": "Neurologist",
+            "Burns": "Burn Specialist",
+            "Gastrointestinal": "Gastroenterologist",
+            "Respiratory": "Pulmonologist",
+            "Poisoning": "Toxicologist",
+            "Skin Issues": "Dermatologist",
+            "Mental Health": "Psychiatrist",
+            "Pediatrics": "Pediatrician",
+            "General": "General Physician",
+            "Infectious": "Infectious Disease Specialist",
+            "Preventive": "General Physician",
+            "Routine Checkup": "General Physician",
+            "Mild Symptoms": "General Physician"
+        }
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT name FROM hospitals WHERE id = %s", (hospital_id,))
+        hospital_info = cursor.fetchone()
+        hospital_name = hospital_info["name"] if hospital_info else f"Hospital {hospital_id}"
+
+        cursor.execute("""
+            SELECT
+                p.id as id,
+                p.name AS patient_name,
+                p.phone,
+                p.emergency_type,
+                p.timestamp,
+                b.bed_number,
+                p.hospital_id
+            FROM patients p
+            JOIN beds b ON p.bed_id = b.id
+            WHERE p.hospital_id = %s
+            ORDER BY p.timestamp DESC
+        """, (hospital_id,))
+
+        patients = cursor.fetchall()
+
+        # 🔁 Add doctor info using mapping
+        for p in patients:
+            specialization = category_to_specialist.get(p["emergency_type"], "General Physician")
+
+            cursor.execute("""
+                SELECT name, specialization
+                FROM doctors
+                WHERE hospital_id = %s AND specialization = %s
+                LIMIT 1
+            """, (hospital_id, specialization))
+
+            doctor = cursor.fetchone()
+
+            if doctor:
+                p["doctor_name"] = doctor["name"]
+                p["specialization"] = doctor["specialization"]
+            else:
+                p["doctor_name"] = "N/A"
+                p["specialization"] = specialization
+
+        conn.close()
+        return jsonify({
+            "hospital_name": hospital_name,
+            "patients": patients
+        })
+
+    except Exception as e:
+        print("🔥 ERROR in /hospital-patients:", str(e))
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/discharge-patient", methods=["POST"])
+def discharge_patient():
+    try:
+        data = request.get_json()
+        patient_id = data.get("patientId")  # unique enough for now
+        hospital_id = data.get("hospitalId")
+
+        print(f"📥 Discharge requested for patient_id: {patient_id}, hospital_id: {hospital_id}")
+
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Step 1: Get bed ID before deleting
+        cursor.execute("""
+            SELECT bed_id FROM patients
+            WHERE id = %s AND hospital_id = %s
+            ORDER BY timestamp DESC
+            LIMIT 1
+        """, (patient_id, hospital_id))
+        bed_result = cursor.fetchone()
+        print("🛏️ Bed lookup result:", bed_result)
+
+        if not bed_result:
+            return jsonify({"success": False, "error": "Patient not found"}), 404
+
+        bed_id = bed_result[0]
+        print("✅ Bed ID associated:", bed_id)
+
+        # Step 2: Delete patient record (soft delete alternative = add discharged column)
+        cursor.execute("""
+            DELETE FROM patients
+            WHERE id = %s AND hospital_id = %s
+        """, (patient_id, hospital_id))
+        print("🗑️ Patient record deleted.")
+
+        # Step 3: Free up the bed
+        cursor.execute("""
+            UPDATE beds SET is_occupied = FALSE WHERE id = %s
+        """, (bed_id,))
+        print("🛏️ Bed marked as free.")
+
+        conn.commit()
+        conn.close()
+
+        print("✅ Discharge completed.")
+        return jsonify({"success": True})
+
+    except Exception as e:
+        print("🔥 DISCHARGE ERROR:", str(e))
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 if __name__ == '__main__':
