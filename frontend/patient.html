@@ -70,6 +70,7 @@
                 },
                 body: JSON.stringify({ symptoms: symptomsText })
             });
+            localStorage.setItem("symptoms", document.getElementById("symptomsText").value);
 
             const result = await response.json();
 

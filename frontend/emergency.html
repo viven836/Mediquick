@@ -1,3 +1,61 @@
+<!--<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediQuick - Emergency Detected</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Lora:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <a href="index.html" class="logo-link">
+        Mediquick
+        </a>
+    </div>
+
+    <div class="container">
+        <div class="result-box">
+            <div class="emergency-title">
+                <span class="emergency-icon">⚠️</span>
+                This is an emergency!
+            </div>
+            
+            <br>
+            <p class="result-text">Based on your symptoms, we recommend immediate medical attention.</p>
+            <p class="result-text">Would you like us to book a bed for you?</p>
+            <div class="button-group">
+                <button class="btn" onclick="window.location.href='user-details.html'">Yes</button>
+                <button class="btn" onclick="window.location.href='index.html'">No</button>
+            </div>
+        </div>
+    </div>
+    <script>
+    window.onload = async () => {
+        const symptoms = localStorage.getItem('symptoms');
+
+        const response = await fetch("http://127.0.0.1:5000/predict", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ symptoms })
+        });
+
+        const result = await response.json();
+
+        // Display the category on the page
+        const categoryDiv = document.createElement("div");
+        categoryDiv.innerHTML = `<h2>Detected Emergency Category: <span style="color:red;">${result.category}</span></h2>`;
+        document.body.appendChild(categoryDiv);
+
+        // Optional: also log it for debugging
+        console.log("Detected category:", result.category);
+    }
+</script>
+
+</body>
+</html>-->
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,6 +78,13 @@
                 <span class="emergency-icon">⚠️</span>
                 This is an emergency!
             </div>
+            
+            <br>
+            <p class="result-text">Based on your symptoms, we recommend immediate medical attention.</p>
+
+            <!-- 🚨 This is where category will be displayed -->
+            <p class="result-text" id="categoryDisplay" style="font-weight: bold; color: #d62828;"></p>
+
             <p class="result-text">Would you like us to book a bed for you?</p>
             <div class="button-group">
                 <button class="btn" onclick="window.location.href='user-details.html'">Yes</button>
@@ -27,5 +92,40 @@
             </div>
         </div>
     </div>
+
+   <script>
+    window.onload = async () => {
+        const symptoms = localStorage.getItem('symptoms');
+
+        if (!symptoms) {
+            console.error("No symptoms found in localStorage.");
+            return;
+        }
+
+        const response = await fetch("http://127.0.0.1:5000/predict", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ symptoms })
+        });
+
+        const result = await response.json();
+
+        // ✅ Store category for next step
+        localStorage.setItem("category", result.category);
+        console.log("Detected category:", result.category);
+        if (result.category) {
+            const categoryElement = document.getElementById("categoryDisplay");
+            categoryElement.innerHTML = `Detected Emergency Category: ${result.category}`;
+        } else {
+            console.warn("Category undefined:", result);
+        }
+
+    }
+</script>
+
+    <!--<script>
+        // Optional: Clear symptoms from localStorage after displaying
+        localStorage.removeItem('symptoms');
+    </script>-->
 </body>
 </html>

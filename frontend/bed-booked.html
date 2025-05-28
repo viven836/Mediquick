@@ -30,35 +30,49 @@
     </div>
 
     <script>
-        // Simulate hospital assignment when page loads
-        window.onload = function() {
-            const hospitals = [
-                'City General Hospital, 123 Main St, Downtown',
-                'St. Mary\'s Medical Center, 456 Oak Ave, Midtown',
-                'Emergency Care Hospital, 789 Pine Rd, Uptown'
-            ];
-            
-            const assignedHospital = hospitals[Math.floor(Math.random() * hospitals.length)];
-            document.getElementById('hospitalAddress').textContent = assignedHospital;
+    window.onload = function() {
+        const bookingData = JSON.parse(localStorage.getItem("bookingResult"));
+        const userName = localStorage.getItem("userName");
+        const userPhone = localStorage.getItem("userPhone");
+
+        if (!bookingData) {
+            document.getElementById("hospitalAddress").textContent = "No booking data found.";
+            return;
         }
 
-        function bookAmbulance() {
-            const responseDiv = document.getElementById('ambulanceResponse');
-            responseDiv.textContent = 'An ambulance is being sent to your location. Please stay calm and wait for assistance.';
-            responseDiv.classList.remove('hidden');
-            
-            // Hide the buttons
-            document.getElementById('ambulanceButtons').style.display = 'none';
-        }
+        // 🏥 Build display content
+        const displayText = `
+            🏥 <strong>Hospital:</strong> ${bookingData.hospital}<br>
+            🛏️ <strong>Bed Number:</strong> ${bookingData.bed_number}<br>
+            👨‍⚕️ <strong>Doctor:</strong> ${bookingData.doctor} (${bookingData.specialization})<br>
+            🧑‍🤝‍🧑 <strong>Patient:</strong> ${userName} (${userPhone})<br>
+            🚨 <strong>Emergency Type:</strong> ${bookingData.emergency_type}
+        `;
 
-        function noAmbulance() {
-            const responseDiv = document.getElementById('ambulanceResponse');
-            responseDiv.textContent = 'No ambulance requested. Please make your way to the hospital safely.';
-            responseDiv.classList.remove('hidden');
-            
-            // Hide the buttons
-            document.getElementById('ambulanceButtons').style.display = 'none';
-        }
-    </script>
+        document.getElementById("hospitalAddress").innerHTML = displayText;
+    }
+
+    function bookAmbulance() {
+        const responseDiv = document.getElementById('ambulanceResponse');
+        responseDiv.textContent = '🚑 An ambulance is being sent to your location. Please stay calm and wait for assistance.';
+        responseDiv.classList.remove('hidden');
+        document.getElementById('ambulanceButtons').style.display = 'none';
+    }
+
+    function noAmbulance() {
+        const responseDiv = document.getElementById('ambulanceResponse');
+        responseDiv.textContent = 'No ambulance requested. Please make your way to the hospital safely.';
+        responseDiv.classList.remove('hidden');
+        document.getElementById('ambulanceButtons').style.display = 'none';
+    }
+    // Clear booking data after display (optional)
+    setTimeout(() => {
+        localStorage.removeItem("bookingResult");
+        localStorage.removeItem("category");
+        localStorage.removeItem("symptoms");
+    }, 5000);  // 5 seconds after load
+
+</script>
+
 </body>
 </html>

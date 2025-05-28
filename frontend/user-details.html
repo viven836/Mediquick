@@ -25,22 +25,71 @@
         </div>
     </div>
 
-    <script>
-        function bookBed() {
-            const userName = document.getElementById('userName').value.trim();
-            const userPhone = document.getElementById('userPhone').value.trim();
-            
-            if (!userName || !userPhone) {
-                alert('Please fill in all fields');
-                return;
-            }
-            
-            // Store user details
-            localStorage.setItem('userName', userName);
-            localStorage.setItem('userPhone', userPhone);
-            
-            window.location.href = 'bed-booked.html';
+<script>
+    function bookBed() {
+        const userName = document.getElementById('userName').value.trim();
+        const userPhone = document.getElementById('userPhone').value.trim();
+
+        if (!userName || !userPhone) {
+            alert('Please fill in all fields');
+            return;
         }
-    </script>
+
+        const category = localStorage.getItem("category");  // From ML result
+        const symptoms = localStorage.getItem("symptoms");  // Optional for tracking
+
+        if (!category) {
+            alert('Category missing. Please restart assessment.');
+            return;
+        }
+
+        // Get location
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
+            try {
+                const response = await fetch("http://127.0.0.1:5000/book-bed", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        name: userName,
+                        phone: userPhone,
+                        latitude,
+                        longitude,
+                        category
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    alert("Booking failed: " + result.error);
+                    console.error(result.details || result.error);
+                    return;
+                }
+
+                // Store booking info for display
+                localStorage.setItem("bookingResult", JSON.stringify(result));
+                localStorage.setItem("userName", userName);
+                localStorage.setItem("userPhone", userPhone);
+
+                // Redirect to result page
+                window.location.href = "bed-booked.html";
+
+            } catch (error) {
+                alert("An error occurred during booking. See console.");
+                console.error("Booking error:", error);
+            }
+
+        }, (error) => {
+            alert("Could not get location. Please allow location access.");
+            console.error("Geolocation error:", error);
+        });
+    }
+</script>
+
 </body>
 </html>

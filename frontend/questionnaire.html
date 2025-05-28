@@ -173,8 +173,11 @@
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({ symptoms: textDescription })
-            });
+                
 
+            });
+            localStorage.setItem("symptoms", textDescription);
+            //localStorage.setItem("assessmentType", "questionnaire");
             const result = await response.json();
 
             if (result.emergency) {
