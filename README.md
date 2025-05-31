@@ -34,3 +34,67 @@ MediQuick is a web-based emergency triage system that uses **machine learning**,
 - 👨‍⚕️ **Doctor specialization matching**
 - 🧾 **Hospital dashboard with discharge option**
 - 🌐 **Frontend-backend synced via REST API**
+
+## 🛠️ How to Run Locally
+Follow these steps to get the MediQuick prototype running on your machine:
+
+### 🔧 Prerequisites
+- Python 3.x
+- MySQL installed and running
+- Git
+- A web browser (for the frontend)
+
+### 📁 1. Clone the Repository
+```
+git clone https://github.com/your-username/mediquick.git
+cd mediquick
+```
+---
+
+### 🗃️ 2. Set Up the MySQL Database
+Open your MySQL CLI.
+
+Create the database:
+```
+CREATE DATABASE mediquick;
+```
+Import the schema and dummy data:
+```
+USE mediquick;
+SOURCE path/to/your/schema_and_data.sql
+```
+Make sure the .sql file path is correct and inside your project.
+---
+### 🐍 3. Set Up the Backend (Flask)
+```
+cd backend
+python -m venv venv
+```
+### Activate the virtual environment:
+Windows:
+```
+.\venv\Scripts\activate
+```
+macOS/Linux:
+```
+source venv/bin/activate
+```
+Then install dependencies:
+```
+pip install -r requirements.txt
+```
+---
+### ⚙️ 4. Configure Database Credentials
+Update backend/db.py file with your MySQL details:
+```
+mysql_host = 'localhost'
+mysql_user = 'your-username'
+mysql_password = 'your-password'
+mysql_db = 'mediquick'
+```
+---
+### 🚀 5. Run the Backend Server
+```
+python app.py
+```
+Your Flask server should now be running at http://127.0.0.1:5000
