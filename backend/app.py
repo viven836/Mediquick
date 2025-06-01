@@ -5,7 +5,10 @@ import joblib
 import os
 from db import get_db_connection
 import math
-from datetime import datetime
+#from datetime import datetime
+from datetime import datetime, timedelta
+from threading import Thread
+import time
 
 app = Flask(__name__, static_folder='../frontend', static_url_path='')  # Pointing to your frontend folder
 CORS(app)
@@ -14,6 +17,40 @@ CORS(app)
 emergency_model = joblib.load("emergency_model.pkl")
 vectorizer = joblib.load("vectorizer.pkl")
 category_model = joblib.load("category_classifier.pkl")
+
+def start_background_cleanup():
+    def cleanup_expired_holds():
+        while True:
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("SET SESSION innodb_lock_wait_timeout = 2")
+                now = datetime.now()
+                cursor.execute("""
+                    SELECT p.id, p.bed_id FROM patients p
+                    JOIN beds b ON p.bed_id = b.id
+                    WHERE p.status = 'on_hold' AND b.hold_until IS NOT NULL AND b.hold_until < %s
+                """, (now,))
+                expired = cursor.fetchall()
+
+                try:
+                    for row in expired:
+                        patient_id = row[0]
+                        bed_id = row[1]
+
+                        cursor.execute("UPDATE patients SET status = 'time_done' WHERE id = %s", (patient_id,))
+                        cursor.execute("UPDATE beds SET hold_until = NULL WHERE id = %s", (bed_id,))
+                except Exception as update_error:
+                    print("⛔ Skipping locked row:", update_error)
+
+
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                print("🧹 Cleanup thread error:", e)
+            time.sleep(60)
+
+    Thread(target=cleanup_expired_holds, daemon=True).start()
 
 # 🏠 Homepage Route
 @app.route('/')
@@ -83,7 +120,7 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
-
+''' original code
 @app.route("/book-bed", methods=["POST"])
 def book_bed():
     try:
@@ -176,7 +213,88 @@ def book_bed():
     except Exception as e:
         print("🔥 Booking Error:", str(e))
         return jsonify({"error": str(e)}), 500
-    
+'''
+
+
+@app.route("/book-bed", methods=["POST"])
+def book_bed():
+    try:
+        data = request.get_json()
+        name = data.get("name")
+        phone = data.get("phone")
+        lat = float(data.get("latitude"))
+        lon = float(data.get("longitude"))
+        category = data.get("category")
+        specialist = category_to_specialist.get(category, "General Physician")
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT h.id AS hospital_id, h.name, h.location_lat, h.location_lon
+            FROM hospitals h
+            JOIN beds b ON h.id = b.hospital_id
+            JOIN doctors d ON h.id = d.hospital_id
+            WHERE b.is_occupied = FALSE AND d.specialization = %s
+            GROUP BY h.id
+        """, (specialist,))
+
+        hospitals = cursor.fetchall()
+        if not hospitals:
+            return jsonify({"error": "No hospitals available with free beds and matching doctor."}), 404
+
+        for h in hospitals:
+            h['distance'] = haversine(lat, lon, h['location_lat'], h['location_lon'])
+        hospitals.sort(key=lambda x: x['distance'])
+
+        selected_hospital = hospitals[0]
+
+        cursor.execute("""
+            SELECT * FROM beds
+            WHERE hospital_id = %s AND is_occupied = FALSE AND (hold_until IS NULL OR hold_until < NOW())
+            LIMIT 1
+        """, (selected_hospital['hospital_id'],))
+
+        bed = cursor.fetchone()
+
+        if not bed:
+            return jsonify({"error": "No free beds in selected hospital"}), 500
+
+        cursor.execute("""
+            SELECT * FROM doctors
+            WHERE hospital_id = %s AND specialization = %s
+            LIMIT 1
+        """, (selected_hospital['hospital_id'], specialist))
+        doctor = cursor.fetchone()
+
+        now = datetime.now()
+        hold_until = now + timedelta(minutes=1)
+
+        cursor.execute("""
+            INSERT INTO patients (name, phone, emergency_type, hospital_id, bed_id, status, bed_confirmed)
+            VALUES (%s, %s, %s, %s, %s, 'on_hold', FALSE)
+        """, (name, phone, category, selected_hospital['hospital_id'], bed['id']))
+
+        cursor.execute("""
+            UPDATE beds SET hold_until = %s WHERE id = %s
+        """, (hold_until, bed['id']))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "hospital": selected_hospital['name'],
+            "bed_number": bed['bed_number'],
+            "doctor": doctor['name'],
+            "specialization": doctor['specialization'],
+            "patient_name": name,
+            "emergency_type": category
+        })
+
+    except Exception as e:
+        print("🔥 Booking Error:", str(e))
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/hospital-login", methods=["POST"])
 def hospital_login():
     try:
@@ -226,7 +344,7 @@ def get_hospital_patients(hospital_id):
             "Routine Checkup": "General Physician",
             "Mild Symptoms": "General Physician"
         }
-
+        ''' original code
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
@@ -280,8 +398,67 @@ def get_hospital_patients(hospital_id):
     except Exception as e:
         print("🔥 ERROR in /hospital-patients:", str(e))
         return jsonify({"error": str(e)}), 500
+        '''
 
-@app.route("/discharge-patient", methods=["POST"])
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT name FROM hospitals WHERE id = %s", (hospital_id,))
+        hospital_info = cursor.fetchone()
+        hospital_name = hospital_info["name"] if hospital_info else f"Hospital {hospital_id}"
+
+        cursor.execute("""
+            SELECT
+                p.id AS id,
+                p.name AS patient_name,
+                p.phone,
+                p.emergency_type,
+                p.timestamp,
+                p.status,
+                p.bed_id,
+                p.hospital_id,
+                b.bed_number,
+                b.hold_until
+            FROM patients p
+            JOIN beds b ON p.bed_id = b.id
+            WHERE p.hospital_id = %s
+            ORDER BY p.timestamp DESC
+        """, (hospital_id,))
+
+
+        patients = cursor.fetchall()
+
+        for p in patients:
+            specialization = category_to_specialist.get(p["emergency_type"], "General Physician")
+
+            cursor.execute("""
+                SELECT name, specialization
+                FROM doctors
+                WHERE hospital_id = %s AND specialization = %s
+                LIMIT 1
+            """, (hospital_id, specialization))
+
+            doctor = cursor.fetchone()
+
+            if doctor:
+                p["doctor_name"] = doctor["name"]
+                p["specialization"] = doctor["specialization"]
+            else:
+                p["doctor_name"] = "N/A"
+                p["specialization"] = specialization
+
+        conn.close()
+        return jsonify({
+            "hospital_name": hospital_name,
+            "patients": patients
+        })
+
+    except Exception as e:
+        print("🔥 ERROR in /hospital-patients:", str(e))
+        return jsonify({"error": str(e)}), 500
+
+''' original @app.route("/discharge-patient", methods=["POST"])
 def discharge_patient():
     try:
         data = request.get_json()
@@ -331,10 +508,136 @@ def discharge_patient():
 
     except Exception as e:
         print("🔥 DISCHARGE ERROR:", str(e))
+        return jsonify({"success": False, "error": str(e)}), 500'''
+
+@app.route("/discharge-patient", methods=["POST"])
+def discharge_patient():
+    try:
+        data = request.get_json()
+        patient_id = data.get("patientId")
+        hospital_id = data.get("hospitalId")
+        print("🔍 Incoming JSON:", data)
+        print(f"📥 Discharge requested for patient_id: {patient_id}, hospital_id: {hospital_id}")
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Step 1: Get bed ID before updating
+        cursor.execute("""
+            SELECT bed_id FROM patients
+            WHERE id = %s AND hospital_id = %s
+            LIMIT 1
+        """, (patient_id, hospital_id))
+        bed_result = cursor.fetchone()
+
+        if not bed_result:
+            return jsonify({"success": False, "error": "Patient not found"}), 404
+
+        bed_id = bed_result[0]
+        print("✅ Bed ID associated:", bed_id)
+
+        # Step 2: Mark patient as discharged (no DELETE!)
+        cursor.execute("""
+            UPDATE patients
+            SET status = 'discharged'
+            WHERE id = %s AND hospital_id = %s
+        """, (patient_id, hospital_id))
+        print("✅ Patient status updated to 'discharged'.")
+
+        # Step 3: Free up the bed
+        cursor.execute("""
+            UPDATE beds
+            SET is_occupied = FALSE
+            WHERE id = %s
+        """, (bed_id,))
+        print("🛏️ Bed marked as free.")
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        print("🔥 DISCHARGE ERROR:", str(e))
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+# # 🏥 Admit Patient Route
+@app.route("/admit-patient", methods=["POST"])
+def admit_patient():
+    try:
+        data = request.get_json()
+        patient_id = data.get("patientId")
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT p.id, p.status, b.hold_until, b.id AS bed_id
+            FROM patients p
+            JOIN beds b ON p.bed_id = b.id
+            WHERE p.id = %s
+        """, (patient_id,))
+
+        result = cursor.fetchone()
+
+        if not result:
+            return jsonify({"success": False, "error": "Patient not found"}), 404
+
+        now = datetime.now()
+        if result['status'] != 'on_hold':
+            return jsonify({"success": False, "error": "Patient not on hold"}), 400
+
+        if result['hold_until'] is not None and now > result['hold_until']:
+            return jsonify({"success": False, "error": "Hold time expired"}), 403
+
+        cursor.execute("""
+            UPDATE patients
+            SET status = 'booked', bed_confirmed = TRUE
+            WHERE id = %s
+        """, (patient_id,))
+
+        cursor.execute("""
+            UPDATE beds
+            SET is_occupied = TRUE, hold_until = NULL
+            WHERE id = %s
+        """, (result['bed_id'],))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        print("🔥 ADMIT ERROR:", str(e))
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/check-patient-status", methods=["GET"])
+def check_patient_status():
+    phone = request.args.get("phone")
+    if not phone:
+        return jsonify({"error": "Phone number required"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT status FROM patients
+        WHERE phone = %s
+        ORDER BY timestamp DESC
+        LIMIT 1
+    """, (phone,))
+    result = cursor.fetchone()
+    conn.close()
+
+    if result:
+        return jsonify({"status": result["status"]})
+    else:
+        return jsonify({"status": "unknown"})
+
+
+
 if __name__ == '__main__':
+    start_background_cleanup()
     app.run(debug=True)
 
 
