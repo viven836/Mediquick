@@ -6,6 +6,7 @@
     <title>MediQuick - Hospital Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Lora:wght@400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+</head>
     <style>
         .dashboard-container {
             max-width: 1200px;
@@ -156,13 +157,27 @@
         .detail-value {
             color: #333333;
         }
+
+        .patient-card.discharged {
+        background-color: #f2f2f2;
+        opacity: 0.7;
+    }
+    .patient-card.timedone {
+    opacity: 0.6;
+    pointer-events: none;
+    }
+
+    .btn.small-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 12px;
+    margin-top: 8px;
+}
+
     </style>
-</head>
 <body>
     <div class="header">
-        <a href="index.html" class="logo-link">
         Mediquick
-        </a>
         <button class="logout-btn" onclick="logout()">Logout</button>
     </div>
 
@@ -178,162 +193,157 @@
     </div>
 
     <script>
-        // Sample hospital data (in real implementation, this would come from your MySQL database)
-        
         let currentHospitalId = null;
         let expandedCard = null;
 
-        
-
         async function loadHospitalDashboard() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const currentHospitalId = urlParams.get('hospitalId') || localStorage.getItem('hospitalId') || '1';
-            localStorage.setItem('hospitalId', currentHospitalId);
+    const urlParams = new URLSearchParams(window.location.search);
+    currentHospitalId = urlParams.get('hospitalId') || localStorage.getItem('hospitalId') || '1';
 
+    try {
+        const response = await fetch(`http://127.0.0.1:5000/hospital-patients/${currentHospitalId}`);
+        const result = await response.json();
+
+        if (!result.patients) throw new Error("No patient data received");
+
+        document.getElementById('hospitalName').textContent = `${result.hospital_name} (ID: ${currentHospitalId})`;
+
+        const admittedCount = result.patients.filter(p => p.status === 'booked').length;
+        const onHoldCount = result.patients.filter(p => p.status === 'on_hold').length;
+        const timeDoneCount = result.patients.filter(p => p.status === 'time_done').length;
+        const dischargedCount = result.patients.filter(p => p.status === 'discharged').length;
+
+        document.getElementById('patientCount').innerHTML = `
+            ✅ <strong>Admitted:</strong> ${admittedCount} &nbsp; | 
+            ⏳ <strong>On Hold:</strong> ${onHoldCount} &nbsp; | 
+            ❌ <strong>Time Done:</strong> ${timeDoneCount} &nbsp; | 
+            📤 <strong>Discharged:</strong> ${dischargedCount}
+        `;
+
+        generatePatientCards(result.patients);
+    } catch (err) {
+        alert("Something went wrong while loading the dashboard.");
+        console.error(err);
+    }
+}
+
+function generatePatientCards(patients) {
+    const grid = document.getElementById('patientsGrid');
+    grid.innerHTML = '';
+
+    patients.forEach(patient => {
+        const card = document.createElement('div');
+        card.className = 'patient-card has-patient';
+        card.onclick = () => toggleCardExpansion(card);
+
+        let actionButton = '';
+
+        if (patient.status === 'on_hold') {
+            if (patient.bed_id === 1) {
+                actionButton = '<span class="patient-status status-emergency">Waiting for FSR admission</span>';
+            } else {
+                actionButton = `<button class="btn small-btn" onclick="event.stopPropagation(); admitPatient(${patient.id})">Admit</button>`;
+            }
+        } else if (patient.status === 'booked') {
+            actionButton = `
+                <span class="patient-status status-stable">Admitted</span><br>
+                <button class="btn small-btn" onclick="event.stopPropagation(); dischargePatient(${patient.id}, ${currentHospitalId})">Discharge</button>
+            `;
+        } else if (patient.status === 'discharged') {
+            actionButton = `<span class="patient-status status-emergency">Discharged</span>`;
+        } else if (patient.status === 'time_done') {
+            actionButton = `<span class="patient-status status-emergency">⏱️ Time Done</span>`;
+        }
+
+        card.innerHTML = `
+            <div class="patient-info">
+                <div class="patient-name">${patient.patient_name}</div>
+                <div class="patient-details">
+                    Phone: ${patient.phone}<br>
+                    Issue: ${patient.emergency_type}<br>
+                    Bed: ${patient.bed_number}<br>
+                    Doctor: ${patient.doctor_name || 'N/A'}<br>
+                    Specialization: ${patient.specialization || 'N/A'}<br>
+                    Timestamp: ${patient.timestamp}<br>
+                    ${actionButton}
+                </div>
+            </div>
+        `;
+
+        grid.appendChild(card);
+    });
+}
+
+function toggleCardExpansion(card) {
+    if (expandedCard === card) {
+        card.classList.remove('expanded');
+        expandedCard = null;
+        return;
+    }
+    if (expandedCard) {
+        expandedCard.classList.remove('expanded');
+    }
+    card.classList.add('expanded');
+    expandedCard = card;
+
+    setTimeout(() => {
+        if (expandedCard === card) {
+            card.classList.remove('expanded');
+            expandedCard = null;
+        }
+    }, 5000);
+}
+
+
+        async function admitPatient(patientId) {
             try {
-                const response = await fetch(`http://127.0.0.1:5000/hospital-patients/${currentHospitalId}`);
-                //const patients = await response.json();
-                const { hospital_name, patients } = await response.json();
+                const response = await fetch("http://127.0.0.1:5000/admit-patient", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ patientId })
+                });
 
-                if (patients.error) {
-                    alert("Failed to load dashboard: " + patients.error);
-                    return;
+                const result = await response.json();
+
+                if (result.success) {
+                    alert("Patient admitted successfully!");
+                    loadHospitalDashboard();
+                } else {
+                    alert("Admit failed: " + result.error);
                 }
-
-                document.getElementById('hospitalName').textContent = `${hospital_name} (ID: ${currentHospitalId})`;
-                document.getElementById('patientCount').textContent = `${patients.length} patient(s) currently admitted`;
-
-                generatePatientCards(patients);
-
             } catch (err) {
-                alert("Something went wrong while loading the dashboard.");
+                alert("Something went wrong while admitting the patient.");
                 console.error(err);
             }
         }
 
-
-        function generatePatientCards(patients) {
-            const grid = document.getElementById('patientsGrid');
-            grid.innerHTML = '';
-
-            // Create cards for patients
-            patients.forEach(patient => {
-                const card = createPatientCard(patient);
-                grid.appendChild(card);
-            });
-
-            // Fill remaining slots with empty cards (up to 6 total)
-            const totalCards = 6;
-            const emptyCards = totalCards - patients.length;
-            
-            for (let i = 0; i < emptyCards; i++) {
-                const emptyCard = createEmptyCard();
-                grid.appendChild(emptyCard);
-            }
-        }
-
-        function createPatientCard(patient) {
-            const card = document.createElement('div');
-            card.className = 'patient-card has-patient';
-            card.onclick = () => toggleCardExpansion(card);
-            
-            card.innerHTML = `
-                <div class="patient-info">
-                    <div class="patient-name">${patient.patient_name}</div>
-                    <div class="patient-details">
-                        Issue: ${patient.emergency_type}<br>
-                        Bed: ${patient.bed_number}
-                    </div>
-                    <span class="patient-status status-emergency">
-                        EMERGENCY
-                    </span>
-                    <div class="expanded-details">
-                        <div class="detail-row">
-                            <span class="detail-label">Phone:</span>
-                            <span class="detail-value">${patient.phone}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Doctor:</span>
-                            <span class="detail-value">${patient.doctor_name} (${patient.specialization})</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Admission:</span>
-                            <span class="detail-value">${new Date(patient.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div class="detail-row">
-                            <button class="btn" style="margin-top: 10px;" onclick="dischargePatient(${patient.id}, this)">Discharge</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            return card;
-        }
-
-        function createEmptyCard() {
-            const card = document.createElement('div');
-            card.className = 'patient-card empty-card';
-            card.innerHTML = '<div>No patient assigned</div>';
-            return card;
-        }
-
-        function toggleCardExpansion(card) {
-            // If this card is already expanded, collapse it
-            if (expandedCard === card) {
-                card.classList.remove('expanded');
-                expandedCard = null;
-                return;
-            }
-
-            // Collapse previously expanded card
-            if (expandedCard) {
-                expandedCard.classList.remove('expanded');
-            }
-
-            // Expand current card
-            card.classList.add('expanded');
-            expandedCard = card;
-
-            // Auto-collapse after 5 seconds
-            setTimeout(() => {
-                if (expandedCard === card) {
-                    card.classList.remove('expanded');
-                    expandedCard = null;
-                }
-            }, 5000);
-        }
-        
         async function dischargePatient(patientId, button) {
-        const hospitalId = localStorage.getItem("hospitalId"); // ✅ GET IT FROM STORAGE
+            const hospitalId = localStorage.getItem("hospitalId"); // ✅ GET IT FROM STORAGE
 
         if (!confirm("Are you sure you want to discharge this patient?")) return;
+        console.log("Discharge payload:", patientId, hospitalId);
 
-        try {
-            const response = await fetch("http://127.0.0.1:5000/discharge-patient", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ patientId, hospitalId })  // ✅ SEND IT!
-            });
+            try {
+                
+                const response = await fetch("http://127.0.0.1:5000/discharge-patient", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ patientId, hospitalId })
+                });
 
-            const result = await response.json();
+                const result = await response.json();
 
-            if (result.success) {
-                alert("Patient discharged.");
-                const card = button.closest('.patient-card');
-                card.remove();
-                document.getElementById('patientCount').textContent =
-                `${document.querySelectorAll('.patient-card.has-patient').length} patient(s) currently admitted`;
-
-            } else {
-                alert("Discharge failed: " + result.error);
+                if (result.success) {
+                    alert("Patient discharged successfully!");
+                    loadHospitalDashboard();
+                } else {
+                    alert("Discharge failed: " + result.error);
+                }
+            } catch (err) {
+                alert("Something went wrong while discharging the patient.");
+                console.error(err);
             }
-
-        } catch (err) {
-            alert("Server error.");
-            console.error(err);
         }
-    }
-
 
 
         function logout() {
@@ -341,7 +351,6 @@
             window.location.href = 'hospital-login.html';
         }
 
-        // Load dashboard when page loads
         window.onload = loadHospitalDashboard;
     </script>
 </body>

@@ -17,8 +17,11 @@
     <div class="container">
         <div class="hospital-info">
             Your Bed is booked in:<br>
-            <span id="hospitalAddress">//hospital address</span>
+            <span id="hospitalAddress">//hospital address</span><br><br>
+            <span id="countdownTimer" style="font-weight: bold; color: red;"></span>
         </div>
+        <div id="countdownTimer" style="margin-top: 20px; font-size: 18px; color: #b22222;"></div>
+
         <div class="result-box">
             <p class="result-text">Would you like us to book an ambulance for you?</p>
             <div class="button-group" id="ambulanceButtons">
@@ -30,7 +33,11 @@
     </div>
 
     <script>
-    window.onload = function() {
+    let admitted = false;
+    let countdownInterval = null;
+    let statusCheckInterval = null;
+
+    window.onload = function () {
         const bookingData = JSON.parse(localStorage.getItem("bookingResult"));
         const userName = localStorage.getItem("userName");
         const userPhone = localStorage.getItem("userPhone");
@@ -40,7 +47,6 @@
             return;
         }
 
-        // 🏥 Build display content
         const displayText = `
             🏥 <strong>Hospital:</strong> ${bookingData.hospital}<br>
             🛏️ <strong>Bed Number:</strong> ${bookingData.bed_number}<br>
@@ -48,30 +54,70 @@
             🧑‍🤝‍🧑 <strong>Patient:</strong> ${userName} (${userPhone})<br>
             🚨 <strong>Emergency Type:</strong> ${bookingData.emergency_type}
         `;
-
         document.getElementById("hospitalAddress").innerHTML = displayText;
+
+        // Start the timer + backend poll
+        startCountdown();
+        statusCheckInterval = setInterval(() => pollPatientStatus(userPhone), 5000);
+    };
+
+    function startCountdown() {
+        let duration = 60; // seconds
+        const countdown = document.getElementById("countdownTimer");
+
+        countdownInterval = setInterval(() => {
+            if (admitted) {
+                countdown.textContent = "✅ You are admitted.";
+                clearInterval(countdownInterval);
+                clearInterval(statusCheckInterval);
+                return;
+            }
+
+            const minutes = Math.floor(duration / 60);
+            const seconds = duration % 60;
+            countdown.textContent = `⏳ Bed will be held for ${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
+
+            if (--duration < 0) {
+                clearInterval(countdownInterval);
+                clearInterval(statusCheckInterval);
+                countdown.textContent = "❌ Bed hold expired. Please refresh or try again.";
+            }
+        }, 1000);
+    }
+
+    async function pollPatientStatus(phone) {
+        try {
+            const res = await fetch(`http://127.0.0.1:5000/check-patient-status?phone=${phone}`);
+            const data = await res.json();
+            if (data.status === 'booked') {
+                admitted = true;
+                document.getElementById("countdownTimer").textContent = "✅ You are admitted.";
+                clearInterval(countdownInterval);
+                clearInterval(statusCheckInterval);
+            }
+        } catch (err) {
+            console.error("❌ Failed to poll patient status:", err);
+        }
     }
 
     function bookAmbulance() {
         const responseDiv = document.getElementById('ambulanceResponse');
-        responseDiv.textContent = '🚑 An ambulance is being sent to your location. Please stay calm and wait for assistance.';
+        responseDiv.textContent = '🚑 An ambulance is being sent to your location. Please stay calm.';
         responseDiv.classList.remove('hidden');
         document.getElementById('ambulanceButtons').style.display = 'none';
     }
 
     function noAmbulance() {
         const responseDiv = document.getElementById('ambulanceResponse');
-        responseDiv.textContent = 'No ambulance requested. Please make your way to the hospital safely.';
+        responseDiv.textContent = '🛣️ No ambulance requested. Please reach the hospital safely.';
         responseDiv.classList.remove('hidden');
         document.getElementById('ambulanceButtons').style.display = 'none';
     }
-    // Clear booking data after display (optional)
-    setTimeout(() => {
-        localStorage.removeItem("bookingResult");
-        localStorage.removeItem("category");
-        localStorage.removeItem("symptoms");
-    }, 5000);  // 5 seconds after load
 
+    // External trigger for manual admission (if needed)
+    window.setAdmittedStatus = function (status) {
+        admitted = status;
+    };
 </script>
 
 </body>
