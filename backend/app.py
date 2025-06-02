@@ -20,7 +20,7 @@ category_model = joblib.load("category_classifier.pkl")
 def home():
     return send_from_directory(app.static_folder, 'index.html')
 
-@app.route("/predict", methods=["POST"])
+@app.route("http://15.207.14.233:5000/predict", methods=["POST"])
 def predict():
     try:
         data = request.get_json()
@@ -46,7 +46,7 @@ def predict():
         print("🔥 FLASK ERROR:", str(e))  # <-- Show full error in terminal
         return jsonify({"error": "Server error", "details": str(e)}), 500
 
-@app.route("/some-route")
+@app.route("http://15.207.14.233:5000/some-route")
 def something():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -84,7 +84,7 @@ def haversine(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-@app.route("/book-bed", methods=["POST"])
+@app.route("http://15.207.14.233:5000/book-bed", methods=["POST"])
 def book_bed():
     try:
         data = request.get_json()
@@ -177,7 +177,7 @@ def book_bed():
         print("🔥 Booking Error:", str(e))
         return jsonify({"error": str(e)}), 500
     
-@app.route("/hospital-login", methods=["POST"])
+@app.route("http://15.207.14.233:5000/hospital-login", methods=["POST"])
 def hospital_login():
     try:
         data = request.get_json()
@@ -205,7 +205,7 @@ def hospital_login():
         return jsonify({"success": False, "error": "Server error"}), 500
 
 
-@app.route("/hospital-patients/<int:hospital_id>", methods=["GET"])
+@app.route("http://15.207.14.233:5000/hospital-patients/<int:hospital_id>", methods=["GET"])
 def get_hospital_patients(hospital_id):
     try:
         category_to_specialist = {
@@ -281,7 +281,7 @@ def get_hospital_patients(hospital_id):
         print("🔥 ERROR in /hospital-patients:", str(e))
         return jsonify({"error": str(e)}), 500
 
-@app.route("/discharge-patient", methods=["POST"])
+@app.route("http://15.207.14.233:5000/discharge-patient", methods=["POST"])
 def discharge_patient():
     try:
         data = request.get_json()
