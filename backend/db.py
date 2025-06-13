@@ -5,7 +5,7 @@ def get_db_connection():
     return mysql.connector.connect(
         host='localhost',
         user='flaskuser',
-        #password=os.environ.get('DB_PASSWORD'),
-        password='supersecret',
+        password=os.environ.get('DB_PASSWORD'),
+        #password='supersecret',
         database='mediquick'
     )
